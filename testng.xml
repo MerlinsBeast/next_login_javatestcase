@@ -8,6 +8,8 @@
       <class name="com.nextlogin.tests.RegisterTest"/>
       <class name="com.nextlogin.tests.LoginTest"/>
       <class name="com.nextlogin.tests.GuardTest"/>
+      <!-- Deliberately red. Remove this line and the class once you have seen a failed build. -->
+      <class name="com.nextlogin.tests.DeliberateFailureTest"/>
     </classes>
   </test>
 </suite>
