@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="next_login UI" verbose="1">
+  <!-- RegisterTest runs first: it creates the throwaway account the later classes log in with. -->
+  <test name="auth">
+    <classes>
+      <class name="com.nextlogin.tests.ElementPresenceTest"/>
+      <class name="com.nextlogin.tests.RegisterTest"/>
+      <class name="com.nextlogin.tests.LoginTest"/>
+      <class name="com.nextlogin.tests.GuardTest"/>
+    </classes>
+  </test>
+</suite>
