@@ -6,8 +6,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -22,15 +24,17 @@ import org.testng.annotations.BeforeSuite;
  */
 public abstract class BaseTest {
 
-  static {
-    for (String noisy :
-        new String[] {
-          "org.openqa.selenium.devtools.CdpVersionFinder",
-          "org.openqa.selenium.chromium.ChromiumDriver",
-        }) {
-      Logger.getLogger(noisy).setLevel(Level.SEVERE);
-    }
-  }
+  /**
+   * Strong references are required. Logger.getLogger hands back a weakly-referenced logger, so
+   * a level set on a logger nobody holds is discarded at the next GC and the warnings return.
+   */
+  private static final List<Logger> SILENCED =
+      Stream.of(
+              "org.openqa.selenium.devtools.CdpVersionFinder",
+              "org.openqa.selenium.chromium.ChromiumDriver")
+          .map(Logger::getLogger)
+          .peek(logger -> logger.setLevel(Level.SEVERE))
+          .toList();
 
   protected WebDriver driver;
 
