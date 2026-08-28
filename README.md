@@ -57,6 +57,27 @@ tests/GuardTest           both redirect directions, plus logout clearing the ses
 needs a real session declares `dependsOnGroups = "register"`, so run the whole suite through
 `testng.xml` rather than cherry-picking a single login test.
 
+## Reporting failures to xpath_healer
+
+`ci/notify_xpath_healer.py` posts the build result to the xpath_healer service, which records
+every delivery and decides whether a failure looks like XPath drift rather than a real bug.
+
+It reads Jenkins' own environment plus three variables:
+
+```
+XPATH_HEALER_URL     e.g. http://localhost:3002/api/v1/webhooks/jenkins
+XPATH_HEALER_SECRET  sent as the X-Webhook-Secret header
+BUILD_RESULT         SUCCESS | FAILURE | UNSTABLE
+```
+
+Failures come from `target/surefire-reports/TEST-*.xml`, so run it after Maven, not instead of
+it. The delivery id is `JOB_NAME#BUILD_NUMBER`, which makes a replayed delivery a no-op rather
+than a duplicate row.
+
+The notifier never fails the build. If the service is down or the secret is wrong it prints the
+problem and exits zero, because a broken notifier must not turn a green build red. With
+`XPATH_HEALER_URL` unset it skips entirely, so the suite still runs anywhere.
+
 ## Waiting
 
 `BasePage.waitForPath` compares the **parsed path exactly**. It deliberately does not use
