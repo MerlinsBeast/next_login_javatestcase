@@ -20,10 +20,14 @@ pipeline {
   }
 
   environment {
-    XPATH_HEALER_URL    = "${env.XPATH_HEALER_URL ?: 'http://host.docker.internal:3002/api/v1/webhooks/jenkins'}"
+    // localhost, not host.docker.internal: that name resolves only from inside a container.
+    // On a native Jenkins the callback silently fails to deliver and the workflow waits out
+    // its full 30-minute timeout on an event that was never sent.
+    XPATH_HEALER_URL    = "${env.XPATH_HEALER_URL ?: 'http://localhost:3002/api/v1/webhooks/jenkins'}"
     XPATH_HEALER_SECRET = credentials('xpath-healer-secret')
     HEAL_RUN_ID         = "${params.HEAL_RUN_ID}"
     PHASE               = "${params.PHASE}"
+    BASE_URL            = "${env.BASE_URL ?: 'http://localhost:3000'}"
   }
 
   stages {
@@ -42,7 +46,20 @@ pipeline {
       steps {
         // A RED build is EXPECTED to fail. Neither phase may abort the pipeline before the
         // post block reports, or the workflow waits 30 minutes for a callback that never comes.
-        sh 'mvn -B test -Dheadless=true || true'
+        //
+        // The PATH preamble is not optional: a Jenkins shell on macOS does not inherit the
+        // login PATH, so Homebrew's mvn is invisible. Without it the suite never runs, the
+        // build reports 0 failed of 0, and a RED that proves nothing is indistinguishable
+        // from a RED that reproduced. Same preamble as the main job.
+        sh '''
+          set -u
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          if [ -d /opt/homebrew/opt/openjdk@21 ]; then
+            export JAVA_HOME=/opt/homebrew/opt/openjdk@21
+            export PATH="$JAVA_HOME/bin:$PATH"
+          fi
+          mvn -B clean test -DbaseUrl="$BASE_URL" -Dheadless=true || true
+        '''
       }
     }
   }

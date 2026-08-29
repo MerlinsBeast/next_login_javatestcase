@@ -3,7 +3,8 @@ pipeline {
   agent any
 
   environment {
-    XPATH_HEALER_URL    = "${env.XPATH_HEALER_URL ?: 'http://host.docker.internal:3002/api/v1/webhooks/jenkins'}"
+    // localhost, not host.docker.internal: that name resolves only from inside a container.
+    XPATH_HEALER_URL    = "${env.XPATH_HEALER_URL ?: 'http://localhost:3002/api/v1/webhooks/jenkins'}"
     XPATH_HEALER_SECRET = credentials('xpath-healer-secret')
   }
 
