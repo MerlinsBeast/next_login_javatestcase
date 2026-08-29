@@ -12,7 +12,9 @@ Env:
   BUILD_RESULT         SUCCESS | FAILURE | UNSTABLE
 """
 
+import base64
 import glob
+import gzip
 import json
 import os
 import sys
@@ -22,6 +24,39 @@ import xml.etree.ElementTree as ET
 
 CONSOLE_TAIL_CHARS = 4000
 MAX_STACK_CHARS = 6000
+# Gzipped. A Next.js page source is 200-800KB raw, roughly 10x smaller compressed.
+MAX_DOM_BYTES = 400_000
+DOM_DIR = "target/failure-dom"
+
+
+def attach_dom(workspace, failure):
+    """Attach the DOM FailureCaptureListener dumped for this testcase, if there is one.
+
+    Sent compressed and unredacted; xpath_healer sanitizes and redacts before it stores or
+    forwards anything. Keep this transport-only.
+    """
+    key = f"{failure['className']}.{failure['testName']}"
+    html = os.path.join(workspace, DOM_DIR, key + ".html")
+    if not os.path.exists(html):
+        return
+
+    try:
+        with open(html, "rb") as f:
+            blob = gzip.compress(f.read())
+    except OSError as e:
+        print(f"[notify] could not read DOM for {key}: {e}")
+        return
+
+    if len(blob) > MAX_DOM_BYTES:
+        print(f"[notify] {key}: DOM too large ({len(blob)}B gz), skipping")
+        return
+
+    failure["domGz"] = base64.b64encode(blob).decode()
+
+    url = os.path.join(workspace, DOM_DIR, key + ".url")
+    if os.path.exists(url):
+        with open(url) as f:
+            failure["pageUrl"] = f.read().strip()
 
 
 def collect_failures(workspace):
@@ -64,10 +99,19 @@ def collect_failures(workspace):
 
 def build_payload(workspace, result):
     failures, totals = collect_failures(workspace)
+    for failure in failures:
+        attach_dom(workspace, failure)
+
     job = os.environ.get("JOB_NAME", "unknown")
     number = os.environ.get("BUILD_NUMBER", "")
 
+    # Set only by the heal-verify job. Their presence is what tells xpath_healer this build
+    # is a RED/GREEN verification of an in-flight heal, not a fresh failure to triage.
+    heal_run_id = os.environ.get("HEAL_RUN_ID")
+    heal = {"healRunId": heal_run_id, "phase": os.environ.get("PHASE")} if heal_run_id else {}
+
     return {
+        **heal,
         "job": job,
         "build": number,
         "url": os.environ.get("BUILD_URL"),
@@ -81,7 +125,8 @@ def build_payload(workspace, result):
         "testsSkipped": totals["skipped"],
         "failures": failures,
         "consoleTail": None,
-    }, f"{job}#{number}"
+        "appCommit": os.environ.get("APP_COMMIT"),
+    }, f"{job}#{number}" + (f"#{heal_run_id}" if heal_run_id else "")
 
 
 def main():
@@ -94,7 +139,11 @@ def main():
         return 0
 
     payload, delivery_id = build_payload(os.environ.get("WORKSPACE", "."), result)
-    print(f"[notify] {result}: {payload['testsFailed']} failed of {payload['testsTotal']} -> {url}")
+    doms = sum(1 for f in payload["failures"] if "domGz" in f)
+    print(
+        f"[notify] {result}: {payload['testsFailed']} failed of {payload['testsTotal']}, "
+        f"{doms} DOM(s) attached -> {url}"
+    )
 
     request = urllib.request.Request(
         url,

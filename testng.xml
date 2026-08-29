@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="next_login UI" verbose="1">
+  <!-- Dumps the DOM on failure so xpath_healer can propose a replacement locator. -->
+  <listeners>
+    <listener class-name="com.nextlogin.core.FailureCaptureListener"/>
+  </listeners>
+
   <!-- RegisterTest runs first: it creates the throwaway account the later classes log in with. -->
   <test name="auth">
     <classes>

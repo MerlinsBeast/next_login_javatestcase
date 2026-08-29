@@ -1,0 +1,65 @@
+// The heal-verify job. Create this as a separate parameterized Pipeline job named
+// `heal-verify` (or whatever JENKINS_VERIFY_JOB is set to in xpath_healer).
+//
+// xpath_healer triggers it twice per heal:
+//   PHASE=red    GIT_REF=<failing commit>   - must reproduce the failure
+//   PHASE=green  GIT_REF=<heal branch>      - must pass the whole suite
+//
+// It reports back through the SAME webhook that started the heal. HEAL_RUN_ID in the
+// payload is what tells xpath_healer this is a verification rather than a fresh failure,
+// and it is how the callback is correlated - never the build number, which is not known
+// at trigger time.
+pipeline {
+  agent any
+
+  parameters {
+    string(name: 'GIT_REF',     defaultValue: '', description: 'Commit SHA or branch to verify')
+    string(name: 'HEAL_RUN_ID', defaultValue: '', description: 'heal_run.id - correlates the callback')
+    choice(name: 'PHASE',       choices: ['red', 'green'], description: 'Which gate this build proves')
+    string(name: 'REPO',        defaultValue: 'yajay0411/next_login_javatestcase', description: 'owner/name')
+  }
+
+  environment {
+    XPATH_HEALER_URL    = "${env.XPATH_HEALER_URL ?: 'http://host.docker.internal:3002/api/v1/webhooks/jenkins'}"
+    XPATH_HEALER_SECRET = credentials('xpath-healer-secret')
+    HEAL_RUN_ID         = "${params.HEAL_RUN_ID}"
+    PHASE               = "${params.PHASE}"
+  }
+
+  stages {
+    stage('Checkout ref') {
+      steps {
+        // The exact ref under test. Never main: drift is a property of one commit.
+        checkout([
+          $class: 'GitSCM',
+          branches: [[name: params.GIT_REF]],
+          userRemoteConfigs: [[url: "https://github.com/${params.REPO}.git"]],
+        ])
+      }
+    }
+
+    stage('Test') {
+      steps {
+        // A RED build is EXPECTED to fail. Neither phase may abort the pipeline before the
+        // post block reports, or the workflow waits 30 minutes for a callback that never comes.
+        sh 'mvn -B test -Dheadless=true || true'
+      }
+    }
+  }
+
+  post {
+    always {
+      junit testResults: 'target/surefire-reports/TEST-*.xml', allowEmptyResults: true
+      archiveArtifacts artifacts: 'target/failure-dom/*', allowEmptyArchive: true
+
+      script {
+        // Derive the result from the tests, not from currentBuild: the `|| true` above means
+        // Jenkins considers every verify build successful regardless of the suite.
+        def failed = junit(testResults: 'target/surefire-reports/TEST-*.xml', allowEmptyResults: true).failCount
+        env.BUILD_RESULT = failed > 0 ? 'FAILURE' : 'SUCCESS'
+      }
+
+      sh 'python3 ci/notify_xpath_healer.py'
+    }
+  }
+}
