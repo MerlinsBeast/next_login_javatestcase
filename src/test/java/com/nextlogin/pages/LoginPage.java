@@ -13,7 +13,7 @@ public class LoginPage extends BasePage {
   public static final String SUBHEADING =
       "//div[@data-slot='card-description'"
           + " and normalize-space()='Sign in to continue to your account.']";
-  public static final String EMAIL_LABEL = "//label[@for='gemail']";
+  public static final String EMAIL_LABEL = "//label[@for='email']";
   public static final String EMAIL_INPUT = "//input[@id='email']";
   public static final String PASSWORD_LABEL = "//label[@for='password']";
   public static final String PASSWORD_INPUT = "//input[@id='password' and @type='password']";
