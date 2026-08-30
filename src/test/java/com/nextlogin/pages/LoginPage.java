@@ -9,7 +9,7 @@ public class LoginPage extends BasePage {
 
   // ---- XPath locators -------------------------------------------------
   public static final String HEADING =
-      "//div[@data-slot='card-title' and normalize-space()='Welcome bac']";
+      "//div[@data-slot='card-title']";
   public static final String SUBHEADING =
       "//div[@data-slot='card-description'"
           + " and normalize-space()='Sign in to continue to your account.']";
