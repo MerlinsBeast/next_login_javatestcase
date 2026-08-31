@@ -18,7 +18,7 @@ public class LoginPage extends BasePage {
   public static final String PASSWORD_LABEL = "//label[@for='password']";
   public static final String PASSWORD_INPUT = "//input[@id='password' and @type='password']";
   public static final String SUBMIT =
-      "//button[@type='submit' and normalize-space()='Sign i']";
+      "//button[@type='submit' and normalize-space()='Sign in']";
   public static final String REGISTER_LINK =
       "//a[@href='/register' and normalize-space()='Create one']";
   public static final String ALERT = "//div[@role='alert']";
