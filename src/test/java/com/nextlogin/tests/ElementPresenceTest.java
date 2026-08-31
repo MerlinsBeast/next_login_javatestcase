@@ -15,7 +15,7 @@ public class ElementPresenceTest extends BaseTest {
   public void loginPageShowsAllElements() {
     LoginPage page = new LoginPage(driver).open();
 
-    page.visible(LoginPage.HEADING);
+    page.find(LoginPage.HEADING);
     page.visible(LoginPage.SUBHEADING);
     assertEquals(page.textOf(LoginPage.EMAIL_LABEL), "Email");
     assertEquals(page.textOf(LoginPage.PASSWORD_LABEL), "Password");

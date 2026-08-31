@@ -26,6 +26,10 @@ public abstract class BasePage {
     return wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(xpath)));
   }
 
+  public WebElement find(String xpath) {
+    return driver.findElement(By.xpath(xpath));
+  }
+
   protected void type(String xpath, String text) {
     WebElement field = visible(xpath);
     field.clear();
