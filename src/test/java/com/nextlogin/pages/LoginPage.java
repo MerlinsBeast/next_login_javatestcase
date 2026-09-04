@@ -23,7 +23,7 @@ public class LoginPage extends BasePage {
       "//a[@href='/register' and normalize-space()='Create one']";
   public static final String ALERT = "//div[@role='alert']";
   public static final String ALERT_TEXT =
-      "//div[@role='alert']//div[@data-slot='alert-description-does-not-exist']";
+      "//div[@role='alert']//div[@data-slot='alert-description']";
 
   public LoginPage(WebDriver driver) {
     super(driver);
